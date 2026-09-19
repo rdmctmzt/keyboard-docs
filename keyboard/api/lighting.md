@@ -211,7 +211,7 @@ const modes = await ServiceKeyboard.getSideLightModes()
 
 `ServiceKeyboard.getLightMatrix()`
 
-读取键位 index 到灯位 index 的映射表，用于自定义每键灯色。
+读取「按键矩阵槽 → 灯位」表。自定义每键颜色写的是 **灯位**，不是改键那个槽本身。
 
 ### 参数
 
@@ -219,7 +219,11 @@ const modes = await ServiceKeyboard.getSideLightModes()
 
 ### 返回值
 
-`Promise<number[]>`，长度 128：键位 index → 灯位映射。
+`Promise<number[]>`，长度 128。
+
+| 下标 | 值 |
+|---|---|
+| 按键矩阵 index（与 [改键 index](./key#如何得到正确的键位-index) 相同） | 灯位 `0–127`；`0xFF` 表示该键无灯 |
 
 ### 使用示例
 
@@ -229,11 +233,50 @@ const matrix = await ServiceKeyboard.getLightMatrix()
 
 ---
 
+## 如何得到正确的灯位 index
+
+自定义灯和改键共用同一套 **按键矩阵 index**（布局 `code` 对出厂键表，见 [布局/改键](./key#如何得到正确的键位-index)）。颜色缓冲按 **灯位** 排列：
+
+```
+灯位 = lightMatrix[按键矩阵 index]
+颜色字节偏移 = 灯位 * 3
+```
+
+`0xFF` 或越界表示该键没有灯，不要写入。
+
+```js
+function layoutCodeOf(key) {
+  if (key.type === 0x10 && key.code1 !== 0) {
+    const mod = {
+      0x01: 0xe0, 0x02: 0xe1, 0x04: 0xe2, 0x08: 0xe3,
+      0x10: 0xe4, 0x20: 0xe5, 0x40: 0xe6, 0x80: 0xe7,
+    }
+    return mod[key.code1] ?? key.code2
+  }
+  return key.code2
+}
+
+const defaults = await ServiceKeyboard.getDefaultKeymap(0)
+const keyIndex = defaults.findIndex((k) => layoutCodeOf(k) === 41) // 布局 code，如 Esc
+const lightMatrix = await ServiceKeyboard.getLightMatrix()
+const ledIndex = lightMatrix[keyIndex]
+if (ledIndex == null || ledIndex === 0xff || ledIndex >= 128) {
+  throw new Error('该键无灯')
+}
+
+await ServiceKeyboard.applyUserLightSlot(0)
+await ServiceKeyboard.setUserKeyColor(0, ledIndex, '#ff6600')
+```
+
+整表写入时同样先按灯位填色：`colors[ledIndex] = '#ff6600'`，再 `setUserAllKeyColors`。读回的 `getUserKeyColors()` 也是灯位顺序，预览某键要用 `colors[ledIndex]`，不要用 `colors[keyIndex]`。
+
+---
+
 ## 切换到自定义灯槽
 
 `ServiceKeyboard.applyUserLightSlot(lightId)`
 
-写入 `lightMode=0xfd` 与 `lightCustomIndex=lightId`，进入自定义灯模式后再读写每键颜色。
+写入 `lightMode=0xfd`、`lightCustomIndex=lightId`、`lightMixColor=0`，进入自定义灯模式后再读写每键颜色。
 
 ### 参数
 
@@ -268,7 +311,7 @@ await ServiceKeyboard.applyUserLightSlot(0)
 
 ### 返回值
 
-`Promise<string[]>`，长度 128，hex 颜色。
+`Promise<string[]>`，长度 128，hex 颜色，下标是 **灯位**（不是按键矩阵 index）。
 
 ### 使用示例
 
@@ -283,14 +326,14 @@ const colors = await ServiceKeyboard.getUserKeyColors(0)
 
 `ServiceKeyboard.setUserKeyColor(lightId, keyIndex, color)`
 
-改写指定灯槽中某一个键位的颜色。
+改指定灯槽里某一个灯位的颜色。先读出该槽 128 色，替换这一颗，再整包写回 128×3 字节。不要只发这一颗的 3 字节。
 
 ### 参数
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
 | `lightId` | `number` | 灯槽 `0–4` |
-| `keyIndex` | `number` | 键位 `0–127` |
+| `keyIndex` | `number` | **灯位** `0–127`，即 `getLightMatrix()[按键矩阵 index]`，不是布局数组下标 |
 | `color` | `string` | hex，如 `#ff6600` |
 
 ### 返回值
@@ -300,7 +343,7 @@ const colors = await ServiceKeyboard.getUserKeyColors(0)
 ### 使用示例
 
 ```js
-await ServiceKeyboard.setUserKeyColor(0, 12, '#ff6600')
+await ServiceKeyboard.setUserKeyColor(0, ledIndex, '#ff6600')
 ```
 
 ---
@@ -309,14 +352,14 @@ await ServiceKeyboard.setUserKeyColor(0, 12, '#ff6600')
 
 `ServiceKeyboard.setUserAllKeyColors(lightId, colors)`
 
-一次性写入指定灯槽的全部键位颜色。
+一次性写入指定灯槽的全部颜色。`colors[i]` 对应灯位 `i`，不是按键矩阵 index。
 
 ### 参数
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
 | `lightId` | `number` | 灯槽 |
-| `colors` | `string[]` | 长度建议 128；不足补 `#000000` |
+| `colors` | `string[]` | 长度建议 128；下标为灯位；不足补 `#000000` |
 
 ### 返回值
 

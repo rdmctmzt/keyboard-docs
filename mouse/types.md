@@ -156,3 +156,14 @@ type MacroAction =
 | `productId` | `number` | 无线设备 PID |
 | `keyboardNum` | `number` | 连接设备数 |
 | `connected` | `boolean` | `status === 4` |
+
+---
+
+## 在线升级
+
+有线鼠标与键盘共用 `@rdmctmzt/sdk-keyboard` 里的类型，见 [在线升级](./api/upgrade)。
+
+| 类型 | 说明 |
+|---|---|
+| `KeyboardFirmwareUpgradeOptions` | 构造升级对象：`vendorId`、`productId`、`firmware`、`onProgress` |
+| `FirmwareUpgradeProgress` | 进度：`percent`、`message` |

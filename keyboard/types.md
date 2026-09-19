@@ -28,51 +28,105 @@ type HidFilterConfig = {
 
 ## 已授权的 HID 设备
 
-`HidDeviceInfo`
+`HidDeviceInfo`。`getDevices()` 返回数组；`init()` 成功时在 `device` 里；`getCurrentDevice()` 未打开时为 `null`。
 
-```ts
-type HidDeviceInfo = {
-  id: string           // 如 "vid:pid:productName"
-  productName?: string
-  vendorId: number
-  productId: number
-  opened: boolean
-}
-```
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | `string` | `vid:pid:productName`，传给 `init(id)` |
+| `productName` | `string?` | 产品名 |
+| `vendorId` | `number` | USB VID |
+| `productId` | `number` | USB PID |
+| `opened` | `boolean` | 当前是否已打开 |
 
-来自 `getDevices()` / `init()` / `getCurrentDevice()`。
+`init()` 的返回值是 `{ success: boolean, device: HidDeviceInfo \| null }`，不是单独一个设备对象。
 
 ---
 
 ## USB 插拔事件
 
-`UsbChangePayload`
+`UsbChangePayload`。`on('usbChange', listener)` / `off('usbChange', listener)` 本身没有返回值。`listener` 收到的就是下面这个对象。
 
-```ts
-type UsbChangePayload = {
-  type: 'connect' | 'disconnect'
-  device?: HIDDevice
-}
-```
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `type` | `'connect' \| 'disconnect'` | `connect` 接入，`disconnect` 拔出 |
+| `device` | `HIDDevice?` | 浏览器里的 HID 设备。断开时可能没有 |
 
-`on('usbChange', …)` / `off('usbChange', …)` 的回调参数。
+`disconnect` 之后缓存会清空，要重新 `getDevices()` / `init()`。
 
 ---
 
 ## 信息区（设备能力）
 
-`DeviceInfo`
+`DeviceInfo`。`getDeviceInfo()` 返回 `Promise<DeviceInfo>`，读的是 CMD `0x12`。没有这个对象时，`getCachedDeviceInfo()` 返回 `null`。
 
-设备能力表，来自 CMD `0x12`。完整字段说明见 [设备信息](./api/info)。
+无对应硬件时，能力位为 `false`，数量和上限为 `0`。能力怎么用见 [设备信息](./api/info)。
 
-| 分组 | 字段 |
-|---|---|
-| 身份 | `vendorId` `productId` `firmwareVer` `protocolVer` `profile` `keyboardID` `keyboardType` |
-| 容量 | `keyMatrixSize` `macroSize`（×256 字节） |
-| 背光能力 | `showLight` `lightSize` `lightMaxBrightness` `lightMaxSpeed` `lightKeySize` |
-| LOGO 能力 | `showLogoLight` `logoLightModeSize` `logoLigthSize` `logoLightMaxBrightness` `logoLightMaxSpeed` `logoLightSupportMusic` |
-| 侧灯能力 | `showLightSideLight` `sideLightModeSize` `sideLightSize` `sideLightMaxBrightness` `sideLightMaxSpeed` `sideLightSupportMusic` |
-| 扩展 | `matrixScreen` `matrixScreenLightSize` `matrixScreenLightRows` `matrixScreenLightColumns` `matrixScreenLightMaxBrightness` `matrixScreenLightMaxSpeed` `matrixScreenLightMaxFrames?` `matrixScreenHasGif?` `matrixScreenGifMaxFrames?` `encoder` `isLed` |
+### 身份
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `vendorId` | `number` | USB VID |
+| `productId` | `number` | USB PID |
+| `firmwareVer` | `number` | 固件版本号 |
+| `protocolVer` | `number` | 协议版本 `1–4`。决定命令表，以及功能区、信息区扩展字段怎么解析 |
+| `profile` | `number` | 当前板载配置档 |
+| `keyboardID` | `number` | 键盘型号 ID |
+| `keyboardType` | `number` | 键盘类型 |
+
+### 容量
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `keyMatrixSize` | `number` | 按键矩阵规模 |
+| `macroSize` | `number` | 宏空间单位。实际字节数是 `macroSize × 256`。为 `0` 时 SDK 按 1096 字节处理 |
+
+### 背光
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `showLight` | `boolean` | 是否有背光 |
+| `lightSize` | `number` | 背光灯效模式数量 |
+| `lightMaxBrightness` | `number` | 背光亮度上限 |
+| `lightMaxSpeed` | `number` | 背光速度上限。功能区里的速度是 `上限 - 固件原始值` |
+| `lightKeySize` | `number` | 可单独控色的灯位数。自定义灯要这个值大于 `0` |
+
+### LOGO 灯
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `showLogoLight` | `boolean` | 是否有 LOGO 灯 |
+| `logoLightModeSize` | `number` | LOGO 灯效模式数量 |
+| `logoLigthSize` | `number` | LOGO 灯珠数量。字段名沿用固件拼写，不是 `Light` |
+| `logoLightMaxBrightness` | `number` | LOGO 亮度上限 |
+| `logoLightMaxSpeed` | `number` | LOGO 速度上限，换算规则同背光 |
+| `logoLightSupportMusic` | `boolean` | LOGO 是否支持音乐律动 |
+
+### 侧灯
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `showLightSideLight` | `boolean` | 是否有侧灯 |
+| `sideLightModeSize` | `number` | 侧灯模式数量 |
+| `sideLightSize` | `number` | 侧灯灯珠数量 |
+| `sideLightMaxBrightness` | `number` | 侧灯亮度上限 |
+| `sideLightMaxSpeed` | `number` | 侧灯速度上限，换算规则同背光 |
+| `sideLightSupportMusic` | `boolean` | 侧灯是否支持音乐律动 |
+
+### 点阵屏 / 编码器 / LCD
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `matrixScreen` | `boolean` | 是否带点阵屏 |
+| `matrixScreenLightSize` | `number` | 点阵灯效模式数量 |
+| `matrixScreenLightRows` | `number` | 点阵行数 |
+| `matrixScreenLightColumns` | `number` | 点阵列数 |
+| `matrixScreenLightMaxBrightness` | `number` | 点阵亮度上限 |
+| `matrixScreenLightMaxSpeed` | `number` | 点阵速度上限 |
+| `matrixScreenLightMaxFrames` | `number?` | 动态自定义最大帧数。没有这一项时字段不出现 |
+| `matrixScreenHasGif` | `boolean?` | 是否支持点阵 GIF，多为协议 4。没有这一项时字段不出现 |
+| `matrixScreenGifMaxFrames` | `number?` | GIF 最大张数。没有这一项时字段不出现 |
+| `encoder` | `boolean` | 是否带编码器 |
+| `isLed` | `boolean` | 是否带 LCD |
 
 ---
 
@@ -255,3 +309,15 @@ type MatrixColorOptions = {
 | `ConvertImageOptions` | `convertImage` / `convertImageToQgif` 选项 |
 
 高级：可直接用 `convertImageToQgif` / `loadQgifModule`（一般走 `LcdScreen.uploadImage` 即可）。
+
+---
+
+## 在线升级
+
+详见 [在线升级](./api/upgrade)。
+
+| 类型 | 说明 |
+|---|---|
+| `KeyboardFirmwareUpgradeOptions` | 构造升级对象：`vendorId`、`productId`、`firmware`、`onProgress` |
+| `FirmwareUpgradeProgress` | 进度：`percent`、`message` |
+

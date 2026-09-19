@@ -70,12 +70,19 @@ const layer0 = await ServiceQmk.getKeymap(matrix, 0)
 ### 4. 监听拔插
 
 ```js
+const vendorId = 0x0000
+const productId = 0x0000
+
 ServiceQmk.on('usbChange', (data) => {
+  const device = data.device
+  if (!device) return
+  if (device.vendorId !== vendorId || device.productId !== productId) return
   // data.type: 'connect' | 'disconnect'
+  // 身份：device.vendorId / device.productId / device.productName
 })
 ```
 
-断开后须重新 `init()`。
+断开后须重新 `init()`。别的已授权设备插拔也会进这个回调，先对 VID / PID。
 
 ## 能力一览
 

@@ -34,12 +34,15 @@
 
 ## USB 插拔事件
 
-`UsbChangePayload`，`on('usbChange')` 回调参数。
+`UsbChangePayload`。`on('usbChange')` / `off` 没有返回值，设备在回调参数里。
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `type` | `'connect' \| 'disconnect'` | 接入 / 断开 |
-| `device` | `HIDDevice?` | 浏览器 HID 对象 |
+| `type` | `'connect' \| 'disconnect'` | 接入 / 拔出 |
+| `device` | `HIDDevice?` | 这次插拔的设备 |
+| `device.vendorId` | `number` | USB VID，用来对上自己那台键盘 |
+| `device.productId` | `number` | USB PID |
+| `device.productName` | `string?` | 产品名。和 VID、PID 拼成 `init` 的 `id` |
 
 ---
 

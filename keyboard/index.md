@@ -97,6 +97,7 @@ ServiceKeyboard.on('usbChange', onUsb)
 | `getDevices()` 无设备 | 检查 VID/PID、`usagePage`/`usage`；确认固件枚举了厂商 HID |
 | `init` 返回 `success: false` | `id` 与授权列表不匹配；先重新 `getDevices()` |
 | 读写超时 / 无应答 | 确认已 `init`；2.4G 试 `packetSize: 0x18`；先 `getDeviceInfo` 对齐 `protocolVer` |
+| 升级弹窗选不到 Boot | 先 `close()` 日常口；切 Boot 后另一次点击里调 `authorizeBoot()`，选 PID `33FF` / `55FF` / `66FF` |
 | `Macro data exceeds device buffer` | 缩短宏动作，或确认 `macroSize` 已读到 |
 
 ## API 目录
@@ -112,6 +113,7 @@ ServiceKeyboard.on('usbChange', onUsb)
 | [编码器](./api/encoder) | 需 `info.encoder` |
 | [性能](./api/performance) | Win 锁、全键无冲、休眠等 |
 | [宏](./api/macro) | `getMacros` / `setMacros` |
+| [在线升级](./api/upgrade) | `KeyboardFirmwareUpgrade`：FF00 切 Boot，再写 IAP bin |
 | [其它 API](./api/misc) | 生命周期、缓存、电量（V2+）、2.4G 状态（`0xD0`）、出厂复位 |
 | [命令说明](./api/commands) | 协议 CMD 全表、包格式 |
 | [键值表](./keycodes) | `type/code1/code2` |

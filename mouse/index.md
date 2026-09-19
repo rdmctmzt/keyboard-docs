@@ -79,6 +79,7 @@ ServiceMouse.on('usbChange', (data) => {
 | 回报率 / DPI 组 | [性能 / DPI](./api/performance) |
 | 按键映射 | [按键映射](./api/keyRemapping) |
 | 宏 | [宏](./api/macro) |
+| 有线在线升级（与 1K 键盘同一套 IAP） | [在线升级](./api/upgrade) |
 | 命令表 / 包格式 | [命令说明](./api/commands) |
 | 键值表 | [键值表](./keycodes) |
 | 参数类型 | [参数类型](./types) |
