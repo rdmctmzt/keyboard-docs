@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: SDK 文档
+  name: RDR 文档
   tagline: 键盘 · QMK · 鼠标
   actions:
     - theme: brand

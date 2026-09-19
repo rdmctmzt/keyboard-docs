@@ -1,0 +1,30 @@
+/* 首列不换行；其余单元格中文不拆字 */
+.vp-doc table th:first-child,
+.vp-doc table td:first-child {
+  white-space: nowrap;
+}
+
+.vp-doc table th,
+.vp-doc table td {
+  word-break: keep-all;
+}
+
+/* 宽表格溢出不要铺到侧栏上抢点击 */
+.VPDoc .content,
+.vp-doc {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* 遮罩淡出 / 桌面端：不要全屏挡点击 */
+.VPBackdrop,
+.VPBackdrop.fade-leave-active,
+.VPNavScreen.fade-leave-active {
+  pointer-events: none !important;
+}
+
+@media (min-width: 960px) {
+  .VPBackdrop {
+    display: none !important;
+  }
+}
