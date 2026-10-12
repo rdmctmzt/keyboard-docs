@@ -3,3 +3,6 @@
 ## 1. 简介
 
 本文档主要介绍键盘、鼠标的驱动开发，以及如何使用 SDK 开发键盘、鼠标。
+
+
+测试地址:https://www.rdmctmzt.com/demoTool/
