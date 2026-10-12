@@ -28,8 +28,9 @@ const vendorId = 0x0000
 const productId = 0x0000
 
 const ServiceMouse = new Mouse({
+  // usagePage=0xFF00 厂商口；usage 常见 1 或 2（以描述符为准）
   configs: [{ vendorId, productId, usagePage: 0xff00, usage: 1 }],
-  // 有线默认 0x38；2.4G 接收器场景传 0x18
+  // packetSize = 有效载荷（不含 8B 头）：有线 0x38；2.4G 0x18（勿传整帧 0x20）
   // packetSize: 0x38,
 })
 ```
@@ -38,8 +39,11 @@ const ServiceMouse = new Mouse({
 
 | 场景 | 建议 |
 |---|---|
-| USB 有线 | 默认即可（`packetSize` 隐含 `0x38`） |
-| 2.4G 接收器 | `packetSize: 0x18` |
+| USB 有线 | 默认即可（`packetSize` 隐含 **`0x38`** = 64−8） |
+| 2.4G 接收器 | `packetSize: **0x18**`（32−8）。**不要**传 `0x20` |
+| HID 过滤 | 优先 `usagePage: 0xff00`；若 usage=1 打不开，可再试 usage=2 或省略 usage |
+
+信息区（`0x12`）鼠标只需读 **32** 字节：有线一包 `size=0x20`；2.4G 两包 `0x18+0x08`。详见 [命令说明](./api/commands) / [设备信息](./api/info)。
 
 完整类型见 [参数类型 · 创建鼠标实例](./types#创建鼠标实例)。
 

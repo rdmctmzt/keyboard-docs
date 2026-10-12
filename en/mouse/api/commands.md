@@ -10,23 +10,44 @@ The vendor mouse AP protocol is sent and received over WebHID. Report ID is fixe
 | Prefer packaged APIs for daily use | This page is for protocol debugging / custom transport; you usually do not hand-build packets |
 | Session must be open | Firmware expects `0x10` before business commands; the SDK transport sends it automatically |
 | Numbering vs keyboard | `0x10`–`0x21` match keyboard; **from `0x22` onward numbers differ** (macros / battery / reset, etc.) |
-| Wired / 2.4G | Different chunk sizes: default `0x38`, 2.4G commonly `0x18` (`packetSize`) |
-| Success | Response `status === 0x55` |
-| Without `0x10` | Byte 8 of the response may be `0x0F`; after ~5s without valid traffic, open session again |
+| Wired / 2.4G | **Effective payload** differs: wired `0x38`, 2.4G `0x18` (do **not** use frame size `0x20` as `size`) |
+| Success | Response `status === 0x55` (protocol byte 8) |
+| Without `0x10` | Byte 8 may be `0x0F`; after ~5s idle, open session again |
+| `0xD0` | **2.4G only** RF status; do not send on wired business paths |
 
 ## Packet format
 
-### Outbound
+### 8-byte header + data
 
-```
-[ reportId=0 ][ 0xaa ][ cmd ][ offsetLo ][ offsetHi ][ size ][ …reserved/checksum ][ payload… ]
-```
-
-| Item | Description |
+| Byte | Meaning |
 |---|---|
-| Wired full packet | Often padded to **65** bytes (including reportId) |
-| Chunk size | Default **`0x38` (56)**; 2.4G commonly **`0x18` (24)** → SDK `packetSize` |
-| Session | Firmware needs **`0x10` open session** before business commands (SDK transport sends automatically) |
+| 0 | `0xAA` |
+| 1 | Command |
+| 2–3 | ADDR (LE offset) |
+| 4 | **Length = effective data length** (excluding this 8-byte header) |
+| 5–6 | CRC16 (unused, send 0) |
+| 7 | Result: `0x55` ok / `0x0F` fail |
+| 8… | Data |
+
+WebHID (SDK):
+
+```
+sendReport(hidReportId, [0xaa, cmd, offsetLo, offsetHi, size, 0, 0, …payload])
+```
+
+The leading `0` in logical `[0, 0xaa, …]` is **not** the HID report ID; real report ID comes from the descriptor.
+
+### Effective payload (`packetSize` / command `size`)
+
+| Link | Frame | Header | **Max effective** | SDK `packetSize` |
+|---|---|---|---|---|
+| USB wired | ~64B data | 8B | **`0x38` (56)** | `0x38` (default) |
+| 2.4G | **32B** | 8B | **`0x18` (24)** | `0x18` |
+
+| Wrong usage | Why |
+|---|---|
+| 2.4G `packetSize: 0x20` | `0x20` is full frame size, not effective payload |
+| Info read wired `size=0x38` then `0x0f` | Mouse info only needs **32** bytes → one packet `size=0x20` |
 
 ### Response
 
@@ -34,24 +55,15 @@ The vendor mouse AP protocol is sent and received over WebHID. Report ID is fixe
 [ 0xaa ][ cmd ][ … ][ status@+7 ][ data… ]
 ```
 
-| Item | Description |
-|---|---|
-| Success | `status === 0x55` |
-| Prefix | Occasionally one extra leading byte; SDK locates `0xaa` header |
-| Notifications | `0xd0` and similar are proactive notifications, not ordinary business responses |
-
 ### offset / size
 
-When reading/writing info area, function area, keymap, or macros:
+| Area | Suggested read | Wired | 2.4G |
+|---|---|---|---|
+| Info `0x12` | **32** bytes (through index 27) | one packet `0x20` | `0x18` + `0x08` |
+| Func `0x14` | **102** valid / **128** buffer | chunk by `0x38` | chunk by `0x18` |
+| Keymap layer | **384** bytes | chunk by `0x38` | chunk by `0x18` |
 
-| Parameter | Meaning |
-|---|---|
-| `offset` | Start offset in target buffer (little-endian 16-bit) |
-| `size` | Read/write length for this packet (not greater than `packetSize`) |
-
-Single-key write: `offset = keyIndex * 3`, `size = 3`, payload is `type, code1, code2`.
-
-Function area is **102** bytes valid (`0..101`); read/write buffer aligned to **128** bytes.
+Single-key write: `offset = keyIndex * 3`, `size = 3`.
 
 ---
 

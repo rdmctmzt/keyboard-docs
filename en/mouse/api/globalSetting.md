@@ -204,6 +204,8 @@ if (battery) {
 
 Queries 2.4G / RF connection state (CMD `0xD0`). Returns status code and **wireless device** VID / PID (not the dongle itself).
 
+> **Do not call on wired links.** `0xD0` is for 2.4G receiver sessions only; skip it in wired connect / smoke tests.
+
 ### Parameters
 
 None.

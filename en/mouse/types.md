@@ -7,14 +7,15 @@ Constructor options and HID filters.
 | Type | Field | Description |
 |---|---|---|
 | `MouseOptions` | `configs` | `HidFilterConfig[]`; must include target VID/PID |
-| | `packetSize?` | Chunk size; wired default `0x38`, 2.4G use `0x18` |
+| | `packetSize?` | **Effective payload** max (command Length, excludes 8B header); wired default `0x38`, 2.4G `0x18` |
 | `HidFilterConfig` | `vendorId` / `productId` | USB VID / PID |
-| | `usagePage?` / `usage?` | Commonly `0xff00` / `1` |
+| | `usagePage?` / `usage?` | Commonly `0xff00`; usage often `1` or `2` |
 
 | Option | When to use |
 |---|---|
-| `packetSize: 0x38` | Wired (default) |
-| `packetSize: 0x18` | 2.4G dongle |
+| `packetSize: 0x38` | Wired (default, 64−8) |
+| `packetSize: 0x18` | 2.4G dongle (32−8) |
+| ~~`packetSize: 0x20`~~ | **Wrong**: that is full 2.4G frame size, not effective payload |
 
 ---
 
@@ -57,9 +58,9 @@ Constructor options and HID filters.
 | `keyMatrixSize` | `number` | Key matrix size |
 | `macroSize` | `number` | Macro space units (×256 bytes) |
 | `showLight` / `lightSize` / `lightMaxBrightness` / `lightMaxSpeed` / `lightKeySize` | — | Lighting capabilities |
-| `sensorModel` | `number` | Sensor model |
-| `reportRateMax` | `number` | Report rate limit code |
-| `dpiGroupMax` | `number` | DPI group limit |
+| `sensorModel` | `number` | Sensor model (info index **25**) |
+| `reportRateMax` | `number` | Report rate limit code (index **26**) |
+| `dpiGroupMax` | `number` | DPI group limit (index **27**) |
 
 ---
 

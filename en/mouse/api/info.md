@@ -1,8 +1,10 @@
 # Basic device information
 
-Reads the **information area** (CMD `0x12`). This is the device “capability table”: firmware version, key/macro capacity, lighting capabilities, and mouse-specific sensor model, report rate limit, and DPI group limit.
+Reads the **information area** (CMD `0x12`). This is the device capability table: firmware version, key/macro capacity, lighting capabilities, and mouse-specific sensor model, report-rate limit, and DPI group limit.
 
-DPI group count and report rate options in the function area should respect the limit fields here for UI constraints.
+DPI group count and report-rate options in the function area should respect these limits in the UI.
+
+Aligned with *RDR Mouse Software Driver Protocol* **§03 Device information** (64 bytes reserved; mouse-valid fields through index 27).
 
 ## Notes
 
@@ -11,7 +13,13 @@ DPI group count and report rate options in the function area should respect the 
 | Call `init()` first | — |
 | Prefer before other features | Read before changing function area, macros, or keymap |
 | Results are cached | `getCachedDeviceInfo()`; cleared on `close`, disconnect, or new `init` |
-| Layout differs from keyboard | Bytes 0–18 match keyboard structure; **19–21** are mouse-specific (sensor / report rate limit / DPI group limit) |
+| **Read-only** | Protocol: writes have no effect and are not retained across power loss; SDK has no write API |
+| Read length | SDK reads **32 bytes** (covers DPI group limit at index 27). **Do not** read 71 bytes like the keyboard path |
+| Wired: one packet | With `packetSize=0x38`: one packet `size=0x20` |
+| 2.4G: two packets | Max effective payload `0x18` (32B frame − 8B header): `0x18` + `0x08`. **Never** send a single packet with `size=0x20` |
+| Byte layout | 0–18 match keyboard; **19–24 are LOGO light capabilities**; **25–27 are mouse-specific** (sensor / report-rate limit / DPI group limit) |
+
+> Older docs incorrectly said “19–21 are mouse-specific”. Captures and the protocol table use **25 / 26 / 27**. SDK `parseDeviceInfo` follows that.
 
 ---
 
@@ -27,48 +35,79 @@ None.
 
 ### Returns
 
-`Promise<DeviceInfo>` — fields in [Field reference](#field-reference) below.
+`Promise<DeviceInfo>` — see [Field reference](#field-reference).
 
 ### Example
 
 ```js
 const info = await ServiceMouse.getDeviceInfo()
 
-// Do not exceed firmware DPI group limit
 const maxGroups = info.dpiGroupMax || 8
-
-// Macro buffer: macroSize × 256; when 0 the SDK falls back to 1096 bytes
 const macros = await ServiceMouse.getMacros()
+```
+
+### Wire capture example
+
+```
+OUT: aa 12 00 00 20 00 00 00 …   // offset=0, size=0x20 (32 bytes)
+IN : aa 12 00 00 20 00 00 55 aa bb … 10 04 08 …
 ```
 
 ---
 
 ## Feature capability checks
 
-Most advanced features depend on information-area limits and flags. The SDK **does not** block calls when a capability bit is false; without hardware you may get timeouts or invalid data — check on the app side before calling.
+The SDK **does not** block calls when a capability bit is false; check on the app side first.
 
 | Feature | Condition | Related docs |
 |---|---|---|
-| Lighting fields | `info.showLight === true` | [Performance / DPI](./performance) (function area `light`) |
-| Macros | `info.macroSize` defines buffer; when 0 SDK falls back to 1096 bytes | [Macros](./macro) |
-| DPI groups | `info.dpiGroupMax` is group count limit (commonly ≤ 8) | [Performance / DPI](./performance) |
-| Report rate | Use `info.reportRateMax` and firmware enum; function area commonly 125/250/500/1000 | [Performance / DPI](./performance) |
-| Battery | Mouse command table always has `0x28` | [Global settings](./globalSetting#getbatterystatus) |
+| Lighting fields | `info.showLight === true` | [Performance / DPI](./performance) |
+| Macros | `info.macroSize` sets buffer; `0` → SDK falls back to 1096 bytes | [Macros](./macro) |
+| DPI groups | `info.dpiGroupMax` | [Performance / DPI](./performance) |
+| Report rate | `info.reportRateMax` + firmware enums | [Performance / DPI](./performance) |
+| Battery | Fixed mouse CMD `0x28` | [Global settings](./globalSetting#getbatterystatus) |
 
 ---
 
-## Field reference {#field-reference}
+## Information-area layout (protocol §03)
 
-### Basic identity
+| Index | Meaning | SDK `DeviceInfo` |
+|---|---|---|
+| 0–1 | Magic `0xAA 0xBB` | (validation) |
+| 2–3 | USB VID (LE) | `vendorId` |
+| 4–5 | USB PID (LE) | `productId` |
+| 6–7 | Firmware version (LE) | `firmwareVer` |
+| 8 | AP protocol version | `protocolVer` |
+| 9 | Profile | `profile` |
+| 10 | Model ID | `keyboardID` |
+| 11 | Reserved / type | `keyboardType` |
+| 12 | Key matrix size | `keyMatrixSize` |
+| 13 | Macro space (×256 bytes) | `macroSize` |
+| 14 | Has key lighting | `showLight` |
+| 15–17 | Light modes / max brightness / max speed | `lightSize` / `lightMaxBrightness` / `lightMaxSpeed` |
+| 18 | Custom light group count | `lightKeySize` |
+| 19–24 | LOGO light capabilities | — |
+| **25** | **Sensor model** | **`sensorModel`** |
+| **26** | **Report-rate max steps** | **`reportRateMax`** |
+| **27** | **DPI group max** | **`dpiGroupMax`** |
+| 28–63 | Reserved | SDK does **not** read |
+
+There is a separate **receiver** info format (32 bytes) for 2.4G dongles — do not confuse it with the mouse body table above.
+
+---
+
+## Field reference
+
+### Identity
 
 | Field | Type | Description |
 |---|---|---|
-| `vendorId` | `number` | USB VID (little-endian 16-bit) |
+| `vendorId` | `number` | USB VID |
 | `productId` | `number` | USB PID |
 | `firmwareVer` | `number` | Firmware version |
-| `protocolVer` | `number` | Protocol version field (mouse uses fixed `CMD_MOUSE`, not keyboard V1–V4 table switch) |
-| `profile` | `number` | Current onboard profile slot |
-| `keyboardID` | `number` | Model ID (field name follows info-area layout) |
+| `protocolVer` | `number` | Protocol version field |
+| `profile` | `number` | Profile index |
+| `keyboardID` | `number` | Model ID |
 | `keyboardType` | `number` | Type field |
 
 ### Key / macro capacity
@@ -76,33 +115,33 @@ Most advanced features depend on information-area limits and flags. The SDK **do
 | Field | Type | Description |
 |---|---|---|
 | `keyMatrixSize` | `number` | Key matrix size |
-| `macroSize` | `number` | Macro space units. **Actual bytes = `macroSize × 256`**. When 0 the SDK falls back to 1096 bytes |
+| `macroSize` | `number` | Macro units; **bytes = macroSize × 256** |
 
-### Lighting capabilities
-
-| Field | Type | Description |
-|---|---|---|
-| `showLight` | `boolean` | Whether lighting is supported |
-| `lightSize` | `number` | Number of lighting modes |
-| `lightMaxBrightness` | `number` | Brightness limit |
-| `lightMaxSpeed` | `number` | Speed limit |
-| `lightKeySize` | `number` | Number of independently colored light positions |
-
-### Mouse-specific
+### Lighting
 
 | Field | Type | Description |
 |---|---|---|
-| `sensorModel` | `number` | Sensor model code (firmware-defined) |
-| `reportRateMax` | `number` | Report rate limit code (firmware-defined) |
-| `dpiGroupMax` | `number` | DPI group limit (commonly 1–8) |
+| `showLight` | `boolean` | Key lighting present |
+| `lightSize` | `number` | Mode count |
+| `lightMaxBrightness` | `number` | Brightness max |
+| `lightMaxSpeed` | `number` | Speed max |
+| `lightKeySize` | `number` | Custom light groups (index 18) |
+
+### Mouse-specific (indices 25–27)
+
+| Field | Type | Description |
+|---|---|---|
+| `sensorModel` | `number` | Sensor model code |
+| `reportRateMax` | `number` | Report-rate step count |
+| `dpiGroupMax` | `number` | DPI group limit |
 
 ---
 
-## Relationship to the function area
+## Relation to function area
 
-| Info area field | Effect |
+| Info field | Effect |
 |---|---|
 | `macroSize` | `getMacros` / `setMacros` buffer length |
-| `dpiGroupMax` | Upper bound on configurable DPI groups in UI |
-| `reportRateMax` | Upper bound on selectable report rates in UI |
-| `showLight` | Whether to show / write function area `light` fields |
+| `dpiGroupMax` | Max DPI groups in UI |
+| `reportRateMax` | Max report-rate options in UI |
+| `showLight` | Whether to show / write function-area `light` |

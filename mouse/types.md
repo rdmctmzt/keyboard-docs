@@ -7,14 +7,15 @@
 | 类型 | 字段 | 说明 |
 |---|---|---|
 | `MouseOptions` | `configs` | `HidFilterConfig[]`，须含目标 VID/PID |
-| | `packetSize?` | 分包长度；有线默认 `0x38`，2.4G 传 `0x18` |
+| | `packetSize?` | **有效载荷**上限（命令 Length，不含 8B 头）；有线默认 `0x38`，2.4G 传 `0x18` |
 | `HidFilterConfig` | `vendorId` / `productId` | USB VID / PID |
-| | `usagePage?` / `usage?` | 常用 `0xff00` / `1` |
+| | `usagePage?` / `usage?` | 常用 `0xff00`；`usage` 常见 `1` 或 `2` |
 
 | 选项 | 何时用 |
 |---|---|
-| `packetSize: 0x38` | 有线（默认） |
-| `packetSize: 0x18` | 2.4G 接收器 |
+| `packetSize: 0x38` | 有线（默认，64−8） |
+| `packetSize: 0x18` | 2.4G 接收器（32−8） |
+| ~~`packetSize: 0x20`~~ | **错误**：那是 2.4G 整帧长度，不是有效载荷 |
 
 ---
 
@@ -57,9 +58,9 @@
 | `keyMatrixSize` | `number` | 按键矩阵规模 |
 | `macroSize` | `number` | 宏空间单位（×256 字节） |
 | `showLight` / `lightSize` / `lightMaxBrightness` / `lightMaxSpeed` / `lightKeySize` | — | 灯光能力 |
-| `sensorModel` | `number` | 传感器型号 |
-| `reportRateMax` | `number` | 回报率上限码 |
-| `dpiGroupMax` | `number` | DPI 组上限 |
+| `sensorModel` | `number` | 传感器型号（信息区索引 **25**） |
+| `reportRateMax` | `number` | 回报率上限码（索引 **26**） |
+| `dpiGroupMax` | `number` | DPI 组上限（索引 **27**） |
 
 ---
 

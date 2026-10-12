@@ -28,8 +28,9 @@ const vendorId = 0x0000
 const productId = 0x0000
 
 const ServiceMouse = new Mouse({
+  // usagePage=0xFF00 vendor iface; usage is often 1 or 2
   configs: [{ vendorId, productId, usagePage: 0xff00, usage: 1 }],
-  // Wired default 0x38; for 2.4G dongle use 0x18
+  // packetSize = effective payload (excludes 8B header): wired 0x38; 2.4G 0x18 (not 0x20)
   // packetSize: 0x38,
 })
 ```
@@ -38,8 +39,11 @@ const ServiceMouse = new Mouse({
 
 | Scenario | Recommendation |
 |---|---|
-| USB wired | Defaults are fine (`packetSize` implied `0x38`) |
-| 2.4G dongle | `packetSize: 0x18` |
+| USB wired | Defaults (`packetSize` **`0x38`** = 64−8) |
+| 2.4G dongle | `packetSize: **0x18**` (32−8). **Do not** pass `0x20` |
+| HID filter | Prefer `usagePage: 0xff00`; if usage=1 fails, try usage=2 |
+
+Info area (`0x12`) only needs **32** bytes: wired one packet `size=0x20`; 2.4G two packets `0x18+0x08`. See [Commands](./api/commands) / [Device info](./api/info).
 
 Full types: [Parameter types · Create mouse instance](./types#create-mouse-instance).
 
