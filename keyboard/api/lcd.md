@@ -227,7 +227,7 @@ await ServiceKeyboard.syncLcdGif()
 |---|---|---|---|
 | `options.configs` | `{ vendorId, productId, usagePage?, usage? }[]` | `0x1919` / MSI `0x0db0` | 屏 HID 过滤 |
 | `options.chunkSize` | `number` | `56` | 写 Flash 分包长度 |
-| `options.qgifBaseUrl` | `string` | 包内 `assets/` | `qgif.js` / `qgif.wasm` 目录 URL |
+| `options.qgifBaseUrl` | `string` | 包内 `assets/` | `qgif.js` / `qgif.wasm` 目录 URL；也可全局 `setQgifAssetsBaseUrl` |
 
 ### 返回值
 
@@ -244,6 +244,33 @@ const lcd2 = new LcdScreen({
   qgifBaseUrl: '/vendor/qgif/',
 })
 ```
+
+---
+
+## 全局指定 QGIF 资源目录
+
+`setQgifAssetsBaseUrl(baseUrl)`
+
+包内自带 `assets/qgif.js` / `qgif.wasm`（`exports`：`./assets/*`）。  
+Vite `optimizeDeps` 预构建后，相对 `import.meta.url` 的路径会失效；此时请显式指定目录，或依赖 SDK 默认的 `/node_modules/@rdmctmzt/sdk-keyboard/assets/`（开发）与 `./sdk-keyboard-assets/`（`file:` Electron）。
+
+### 参数
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `baseUrl` | `string` | 目录 URL，建议以 `/` 结尾 |
+
+### 使用示例
+
+```js
+import { setQgifAssetsBaseUrl, LcdScreen } from '@rdmctmzt/sdk-keyboard'
+
+setQgifAssetsBaseUrl('/node_modules/@rdmctmzt/sdk-keyboard/assets/')
+const lcd = new LcdScreen()
+```
+
+亦可用 `globalThis.__RDMCTMZT_SDK_KEYBOARD_ASSETS_BASE__ = '...'`。  
+另见导出：`convertImageToQgif`、`loadQgifModule`。
 
 ---
 

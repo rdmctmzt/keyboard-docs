@@ -47,13 +47,21 @@ const ServiceQmk = new QmkKeyboard({
 
 ### 2. 授权并初始化
 
+方式 A — 弹窗选设备：
+
 ```js
 const devices = await ServiceQmk.getDevices()
 const { id } = devices[0]
 await ServiceQmk.init(id)
 ```
 
-`init` 会尝试读取协议版本并缓存。
+方式 B — 宿主已打开 `HIDDevice`（驱动卡片）：
+
+```js
+await ServiceQmk.initDevice(hostHidDevice)
+```
+
+`init` / `initDevice` 会尝试读取协议版本并缓存。探测失败时 `getProtocolVersion()` 返回 `-1`。
 
 ### 3. 推荐调用顺序
 
@@ -62,9 +70,13 @@ const ver = await ServiceQmk.getProtocolVersion() // 常见 7 / 8 / 9
 const layers = await ServiceQmk.getLayerCount()
 const fw = await ServiceQmk.getFirmwareVersion()
 
-// 矩阵行列来自 VIA JSON（或自有布局定义）
+// 矩阵行列来自 VIA JSON（或自有布局定义）— 字段说明见 [VIA JSON 处理](./via-json)
 const matrix = { rows: 5, cols: 15 }
-const layer0 = await ServiceQmk.getKeymap(matrix, 0)
+const layer0 = await ServiceQmk.readRawMatrix(matrix, 0) // 或 getKeymap
+
+// 灯光：menus 来自 VIA JSON
+const parsed = ServiceQmk.PARSE_MENUS_TO_LIGHTING_EFFECTS(viaDefinition.menus)
+const state = await ServiceQmk.getLightingState(viaDefinition.menus)
 ```
 
 ### 4. 监听拔插
@@ -88,12 +100,13 @@ ServiceQmk.on('usbChange', (data) => {
 
 | 能力 | 文档 |
 |---|---|
+| VIA JSON 获取、校验、与 SDK 配合 | [VIA JSON 处理](./via-json) |
 | 协议版本 / 固件版本 / 层数 / keyboard value | [基础的设备信息](./api/info) |
-| 单键 / 整层 keymap / 清空 | [布局/改键](./api/key) |
-| Custom 通道灯光读写与保存 | [灯光](./api/lighting) |
+| 单键 / 整层 keymap（含 `readRawMatrix`）/ 清空 | [布局/改键](./api/key) |
+| Custom 灯光 + menus 解析 / `getLightingState` | [灯光](./api/lighting) |
 | 宏缓冲读写与编码 | [宏](./api/macro) |
 | 编码器顺/逆时针键码 | [编码器](./api/encoder) |
-| 生命周期 / EEPROM / Bootloader | [其它 API](./api/misc) |
+| `init` / `initDevice` / `close` / EEPROM / Bootloader | [其它 API](./api/misc) |
 | VIA 命令表 / 包格式 | [命令说明](./api/commands) |
 | 16-bit keycode | [键值表](./keycodes) |
 | 参数类型 | [参数类型](./types) |

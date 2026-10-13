@@ -98,6 +98,61 @@ const macros = await ServiceMouse.getMacros()
 
 ---
 
+## 读回后如何处理 {#process-after-read}
+
+`getMacros()` 已解码为 `MacroProfile[]`。线格式与键盘宏相同，处理方式也相同。
+
+### 1. 槽与动作
+
+| 字段 | 用法 |
+|---|---|
+| `key` | 槽号，对应改键 `0x60/0x61` 的 `code1` |
+| `list` | 动作序列；空表示无宏 |
+| `name` / `type` / `replayCnt` | 仅展示 / 兼容，不写回缓冲 |
+
+```js
+const macros = await ServiceMouse.getMacros()
+const bySlot = new Map(macros.map((p) => [p.key, p]))
+```
+
+### 2. 解析 `list`
+
+| `action.type` | 字段 | 含义 |
+|---|---|---|
+| `'keyboard'` | `code` | 键盘 HID Usage（如 `0x04` = A） |
+| `'mouse'` | `button` | `1` 左 / `2` 右 / `4` 中 / `8` 后退 / `16` 前进 |
+| 共用 | `down` / `delayMs` | 按下或抬起；相对上一步延时 |
+
+```js
+function actionsToSteps(list) {
+  return list.map((action, i) =>
+    action.type === 'keyboard'
+      ? { index: i, kind: 'keyboard', usage: action.code, down: action.down, delayMs: action.delayMs }
+      : { index: i, kind: 'mouse', button: action.button, down: action.down, delayMs: action.delayMs },
+  )
+}
+```
+
+### 3. 和按键绑定合并
+
+```js
+const keys = await ServiceMouse.getKeymap(0)
+const bindings = keys.filter((k) => k.type === 0x60 || k.type === 0x61)
+
+for (const key of bindings) {
+  const profile = bySlot.get(key.code1)
+  const play =
+    key.type === 0x61
+      ? { mode: 'times', times: key.code2 }
+      : { mode: 'loop', loop: key.code2 }
+  // key.index = 物理键位；profile.list = 宏内容；play = 播放方式
+}
+```
+
+播放方式只在键表；改 `list` 后用 `setMacros` 写回。
+
+---
+
 ## 写入宏
 
 `ServiceMouse.setMacros(profiles)`

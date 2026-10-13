@@ -165,3 +165,76 @@ await ServiceQmk.setMacros([
 
 const list = await ServiceQmk.getMacros()
 ```
+
+---
+
+## Process macros after read {#process-after-read}
+
+Prefer `getMacros()`. It already decodes the buffer into `ViaMacroProfile[]`. Use `getMacroBytes` + `decodeMacroBuffer` only when you need to edit wire format yourself.
+
+### 1. Slots
+
+| Field | Usage |
+|---|---|
+| `index` | Macro slot. Keymap `MACRO(n)` maps to `n` |
+| `events` | Event list; empty means no content in that slot |
+
+```js
+const profiles = await ServiceQmk.getMacros()
+const bySlot = new Map(profiles.map((p) => [p.index, p]))
+```
+
+### 2. Turn events into usable steps
+
+| `event.type` | Field | Meaning |
+|---|---|---|
+| `'tap'` | `keycode` | Single tap (internally down+up) |
+| `'down'` / `'up'` | `keycode` | Press / release; `keycode` uses protocol single-byte convention |
+| `'delay'` | `ms` | Delay in milliseconds |
+| `'ascii'` | `text` | Continuous ASCII characters |
+
+```js
+function eventsToSteps(events) {
+  return events.map((ev, i) => {
+    if (ev.type === 'ascii') return { index: i, kind: 'text', text: ev.text }
+    if (ev.type === 'delay') return { index: i, kind: 'delay', ms: ev.ms }
+    return {
+      index: i,
+      kind: ev.type,
+      keycode: ev.keycode,
+    }
+  })
+}
+
+const profile = bySlot.get(0)
+const steps = eventsToSteps(profile?.events ?? [])
+```
+
+### 3. Merge with keymap bindings
+
+1. Use `readRawMatrix` to get one layer of keycodes.
+2. Find `MACRO(n)` (VIA v12 often `0x7700 + n`; other base addresses in [Keycode table](../keycodes)).
+3. Match `n` to `profiles` where `index === n` for `events`.
+
+```js
+const layer0 = await ServiceQmk.readRawMatrix(matrix, 0)
+for (let i = 0; i < layer0.length; i += 1) {
+  const kc = layer0[i]
+  if (kc < 0x7700 || kc > 0x777f) continue
+  const slot = kc - 0x7700
+  const profile = bySlot.get(slot)
+  // i → row/col; slot → macro content profile.events
+}
+```
+
+### 4. Write back
+
+After editing `events`, call `setMacros`. The SDK rewrites the whole buffer via the VIA flow. Over capacity throws; check `getMacroBufferSize()` first.
+
+---
+
+## SDK API names (see Chinese docs for full detail)
+
+- `encodeMacroProfiles`
+- `decodeMacroBuffer`
+- `encodeMacroEvents`

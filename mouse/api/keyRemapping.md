@@ -54,6 +54,45 @@ const keys = await ServiceMouse.getKeymap(0)
 
 ---
 
+## 读回后如何处理键值 {#process-after-read}
+
+`getKeymap` / `getDefaultKeymap` 返回的已经是 `KeyEntry[]`，按 `type` 分支即可。
+
+### 1. 有效槽与物理键
+
+鼠标物理键远少于 128。先读 `getDefaultKeymap(0)`，用默认值认出左 / 右 / 中 / 侧键 / DPI 等槽位，再去用户层同 `index` 读当前绑定。
+
+| 情况 | 判定 |
+|---|---|
+| 空槽 | `type/code1/code2` 全 `0` |
+| 穿透 | `type === 0x10`（或 `0`）且 `code2 === 0x01` 且 `code1 === 0` |
+
+### 2. 按 `type` 取可用数据
+
+| `type` | 可用字段 | 说明 |
+|---|---|---|
+| `0x10` / `0x12` | `code1` 修饰键，`code2` HID Usage | 键盘键 |
+| `0x40` | `code2` 鼠标按键位 | `1` 左 / `2` 右 / `4` 中 / `8` 后退 / `16` 前进 |
+| `0x50` | `code1` 功能号 | 如 `0x14` DPI / 参数切换 |
+| `0x60` / `0x61` | `code1` 宏槽；`code2` 循环或次数 | 内容在 `getMacros()` |
+| `0x70` | `code1` 间隔档；`code2` 次数 | 火力键 |
+
+```js
+const defaults = await ServiceMouse.getDefaultKeymap(0)
+const keys = await ServiceMouse.getKeymap(0)
+
+function isLeftButton(key) {
+  return key.type === 0x40 && key.code2 === 1
+}
+
+const leftIndex = defaults.find((k) => isLeftButton(k))?.index
+const leftNow = keys.find((k) => k.index === leftIndex)
+```
+
+宏绑定的拼装方式与键盘相同，见 [宏 · 读回后如何处理](./macro#process-after-read)。键值细节见 [键值表](../keycodes)。
+
+---
+
 ## 读取出厂键表
 
 `ServiceMouse.getDefaultKeymap(layer?)`

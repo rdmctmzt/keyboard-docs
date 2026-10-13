@@ -49,7 +49,7 @@ const { id } = devices[0]
 
 `ServiceQmk.init(id)`
 
-按 `id` 打开已授权设备，建立 VIA 传输，并尝试缓存协议版本。
+按 `id` 打开已授权设备，内部调用 `initDevice`，建立 VIA 传输，并尝试缓存协议版本。
 
 ### 参数
 
@@ -66,6 +66,71 @@ const { id } = devices[0]
 ```js
 const { success, device } = await ServiceQmk.init(devices[0].id)
 if (!success) throw new Error('init failed')
+```
+
+---
+
+## 绑定已有 HIDDevice
+
+`ServiceQmk.initDevice(device)`
+
+驱动 / 宿主已打开物理口时使用（例如 WebHid 首页卡片）。**不发**厂商 `0x10` 开通讯；包长默认 33（VIA）。
+
+### 参数
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `device` | `HIDDevice` | 已授权的原生 WebHID 设备；未打开时 SDK 会 `open()` |
+
+### 返回值
+
+`Promise<{ success: boolean, device: HidDeviceInfo | null }>`
+
+### 使用示例
+
+```js
+// hostHid 来自应用层已缓存的 navigator.hid 设备
+const { success } = await ServiceQmk.initDevice(hostHid)
+```
+
+---
+
+## 当前已连接设备
+
+`ServiceQmk.getCurrentDevice()`
+
+同步读取当前已 `init` / `initDevice` 的设备信息。
+
+### 返回值
+
+`HidDeviceInfo | null`
+
+---
+
+## 原生 HIDDevice
+
+`ServiceQmk.getNativeDevice()`
+
+返回底层 `HIDDevice`（未连接为 `null`）。供驱动复用同一物理口，勿与另一套传输层同时写。
+
+### 返回值
+
+`HIDDevice | null`
+
+---
+
+## 关闭连接
+
+`ServiceQmk.close()`
+
+释放 VIA transport 与内部引用。**默认不** `HIDDevice.close()`（留给宿主会话管理）。
+
+### 返回值
+
+`void`（同步）
+
+```js
+ServiceQmk.close()
 ```
 
 ---

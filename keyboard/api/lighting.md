@@ -405,3 +405,18 @@ await ServiceKeyboard.setMusicRhythmColors(['#ff0000', '#00ff00'], {
 ### 注意事项
 
 `protocolVer < 2` 时 SDK 抛错。结束推流时可再发一帧并设 `keepSession: false`，或调用 `close()`。
+
+---
+
+## 读取灯效同步预览色
+
+`ServiceKeyboard.getLightModeColors()`
+
+需先 `openLightSync()`。返回 128 个键位预览色（hex），供驱动「同步灯效」轮询。不可用时抛错。
+
+```js
+await ServiceKeyboard.openLightSync()
+const colors = await ServiceKeyboard.getLightModeColors()
+await ServiceKeyboard.closeLightSync()
+```
+

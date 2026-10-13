@@ -113,6 +113,113 @@ const macros = await ServiceKeyboard.getMacros()
 
 ---
 
+## Process macros after read {#process-after-read}
+
+`getMacros()` already decodes the device buffer into `MacroProfile[]`. Do not parse the `0xaa 0x55` header yourself — use the returned objects.
+
+### 1. How to use slots
+
+| Field | After read |
+|---|---|
+| `key` | Slot number; matches remap `type=0x60/0x61` `code1` |
+| `name` | Display only. Not on device; SDK fills `M0`, `M1`…; UI may override; still not written to buffer on save |
+| `type` / `replayCnt` | Compatibility fields; **not** playback mode. Playback is only in keymap `code2` |
+| `list` | Actual action sequence. Empty array means no macro in that slot |
+
+```js
+const macros = await ServiceKeyboard.getMacros()
+const bySlot = new Map(macros.map((p) => [p.key, p]))
+
+const filled = macros.filter((p) => p.list.length > 0)
+```
+
+### 2. Parse the action sequence into usable data
+
+Each step in `list` is already structured. Read fields by `type`:
+
+| `action.type` | Field | Meaning |
+|---|---|---|
+| `'keyboard'` | `action.code` | Keyboard HID usage, e.g. `0x04` = A. Not a remap triple or `KeyboardEvent.code` |
+| `'mouse'` | `action.button` | `1` left / `2` right / `4` middle / `8` back / `16` forward |
+| Shared | `action.down` | `true` press, `false` release |
+| Shared | `action.delayMs` | Delay after previous step (ms) |
+
+A full click is usually press + release:
+
+```js
+function actionsToSteps(list) {
+  return list.map((action, i) => {
+    if (action.type === 'keyboard') {
+      return {
+        index: i,
+        kind: 'keyboard',
+        usage: action.code,
+        down: action.down,
+        delayMs: action.delayMs,
+      }
+    }
+    return {
+      index: i,
+      kind: 'mouse',
+      button: action.button,
+      down: action.down,
+      delayMs: action.delayMs,
+    }
+  })
+}
+
+const profile = bySlot.get(0)
+const steps = actionsToSteps(profile?.list ?? [])
+```
+
+For key labels, look up `usage` / `button` in the [Keycode table](../keycodes) HID usage or mouse button tables. Do not treat `code` as `{ type, code1, code2 }`.
+
+### 3. Merge with key bindings
+
+Whether a macro can play depends on a physical key bound to that slot:
+
+```js
+const keys = await ServiceKeyboard.getKeymap(0)
+const bindings = keys.filter((k) => k.type === 0x60 || k.type === 0x61)
+
+for (const key of bindings) {
+  const slot = key.code1
+  const profile = bySlot.get(slot)
+  const play =
+    key.type === 0x61
+      ? { mode: 'times', times: key.code2 }
+      : {
+          mode: 'loop',
+          // 0 = play once; 1 = loop while held; 3 = press again to stop
+          loop: key.code2,
+        }
+
+  // UI: which key index triggers which macro; actions from profile.list; playback from play
+  console.log({
+    keyIndex: key.index,
+    slot,
+    play,
+    steps: actionsToSteps(profile?.list ?? []),
+  })
+}
+```
+
+| What you need | Source |
+|---|---|
+| Keys pressed in the macro | `profile.list` |
+| Which physical key is bound | `getKeymap` entry with `type` `0x60/0x61` and `code1 === profile.key` |
+| Once / loop / N times | That key’s `code2` (and `0x60` vs `0x61`) |
+
+### 4. Write back after editing
+
+1. Change `list` (add/remove actions, change `delayMs`).
+2. Call `setMacros` to overwrite the whole area; keep empty slots with `key` and `list: []`, or pad to max slot as needed.
+3. To change playback mode, edit `0x60/0x61` on the keymap — do not change `profile.replayCnt`.
+
+Exceeding `macroSize × 256` (1096 when `macroSize` is 0) throws `Macro data exceeds device buffer`.
+
+---
+
 ## Write macros
 
 `ServiceKeyboard.setMacros(profiles)`

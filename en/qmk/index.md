@@ -88,6 +88,7 @@ After disconnect, call `init()` again. Other authorized devices also trigger thi
 
 | Capability | Documentation |
 |---|---|
+| VIA JSON obtain, validate, and SDK integration | [VIA JSON](./via-json) |
 | Protocol version / firmware version / layer count / keyboard value | [Basic device information](./api/info) |
 | Single key / full layer keymap / clear | [Layout and remapping](./api/key) |
 | Custom channel lighting read/write and save | [Lighting](./api/lighting) |
@@ -106,3 +107,12 @@ After disconnect, call `init()` again. Other authorized devices also trigger thi
 | `≥ 8` (Beta+) | `0x11` for layer count; `0x12`/`0x13` for chunked keymap read/write |
 
 After connect, call `getProtocolVersion()` first, then choose read/write strategy; SDK `getKeymap` / `setKeymap` pick the path by version automatically.
+
+---
+
+## SDK API names (see Chinese docs for full detail)
+
+- `initDevice`
+- `readRawMatrix`
+- `PARSE_MENUS_TO_LIGHTING_EFFECTS`
+- `getLightingState`

@@ -83,3 +83,10 @@ Same as `getEncoder`, returns an object.
 | `id` | `number` | Encoder index |
 | `clockwise` | `boolean` | Direction |
 | `keycode` | `number` | Keycode |
+
+---
+
+## SDK API names (see Chinese docs for full detail)
+
+- `getEncoderValue`
+- `setEncoderValue`

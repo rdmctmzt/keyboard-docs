@@ -20,7 +20,9 @@
 
 ## 已授权的 HID 设备
 
-`HidDeviceInfo`，来自 `getDevices()` / `init()`。
+`HidDeviceInfo`，来自 `getDevices()` / `init()` / `initDevice()` / `getCurrentDevice()`。
+
+宿主已持有原生口时，把 `HIDDevice` 传给 `initDevice(device)`（不是 `HidDeviceInfo`）。
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
@@ -48,7 +50,7 @@
 
 ## 矩阵尺寸
 
-`MatrixSize`，用于 `getKeymap` / `setKeymap`。
+`MatrixSize`，用于 `getKeymap` / `setKeymap` / `readRawMatrix` / `writeRawMatrix`。
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
@@ -56,6 +58,20 @@
 | `cols` | `number` | 列数 |
 
 与 VIA JSON `matrix` 一致。
+
+---
+
+## 灯光解析
+
+见 [灯光](./api/lighting)。
+
+| 类型 | 说明 |
+|---|---|
+| `ViaMenu` / `ViaMenuGroup` / `ViaMenuItem` | VIA JSON `menus` 结构子集 |
+| `LightingParseRule` | 如何从菜单项识别 effect / brightness / speed / color |
+| `LightingEffectMeta` | 单条灯效（name / value / 是否支持亮度速度颜色） |
+| `ParsedLightingResult` | `effects` + `maxBrightness` + `maxSpeed` |
+| `DEFAULT_LIGHTING_PARSE_RULE` | 默认规则常量 |
 
 ---
 

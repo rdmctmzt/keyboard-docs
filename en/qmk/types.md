@@ -95,3 +95,13 @@ Matches VIA JSON `matrix`.
 | `CustomChannel` | Lighting / custom channels |
 | `PROTOCOL_ALPHA` / `BETA` / `GAMMA` | `7` / `8` / `9` |
 | `VIA_MAX_BUFFER_CHUNK` | Max chunk size 28 |
+
+---
+
+## SDK API names (see Chinese docs for full detail)
+
+- `initDevice`
+- `getCurrentDevice`
+- `readRawMatrix`
+- `writeRawMatrix`
+- `DEFAULT_LIGHTING_PARSE_RULE`

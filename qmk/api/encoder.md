@@ -14,7 +14,8 @@
 
 ## 读取编码器键码
 
-`ServiceQmk.getEncoder(layer, id, clockwise)`
+`ServiceQmk.getEncoder(layer, id, clockwise)`  
+别名（对齐驱动）：`ServiceQmk.getEncoderValue(layer, id, clockwise)`
 
 VIA `0x14`。
 
@@ -41,7 +42,8 @@ const ccw = await ServiceQmk.getEncoder(0, 0, false)
 
 ## 设置编码器键码
 
-`ServiceQmk.setEncoder(layer, id, clockwise, keycode)`
+`ServiceQmk.setEncoder(layer, id, clockwise, keycode)`  
+别名（对齐驱动）：`ServiceQmk.setEncoderValue(layer, id, clockwise, keycode)`
 
 VIA `0x15`。
 

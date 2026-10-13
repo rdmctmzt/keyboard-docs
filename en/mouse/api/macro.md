@@ -98,6 +98,61 @@ const macros = await ServiceMouse.getMacros()
 
 ---
 
+## Process macros after read {#process-after-read}
+
+`getMacros()` is already decoded into `MacroProfile[]`. Wire format matches keyboard macros; processing is the same.
+
+### 1. Slots and actions
+
+| Field | Usage |
+|---|---|
+| `key` | Slot number; matches remap `0x60/0x61` `code1` |
+| `list` | Action sequence; empty means no macro |
+| `name` / `type` / `replayCnt` | Display / compatibility only; not written back to buffer |
+
+```js
+const macros = await ServiceMouse.getMacros()
+const bySlot = new Map(macros.map((p) => [p.key, p]))
+```
+
+### 2. Parse `list`
+
+| `action.type` | Field | Meaning |
+|---|---|---|
+| `'keyboard'` | `code` | Keyboard HID usage (e.g. `0x04` = A) |
+| `'mouse'` | `button` | `1` left / `2` right / `4` middle / `8` back / `16` forward |
+| Shared | `down` / `delayMs` | Press or release; delay after previous step |
+
+```js
+function actionsToSteps(list) {
+  return list.map((action, i) =>
+    action.type === 'keyboard'
+      ? { index: i, kind: 'keyboard', usage: action.code, down: action.down, delayMs: action.delayMs }
+      : { index: i, kind: 'mouse', button: action.button, down: action.down, delayMs: action.delayMs },
+  )
+}
+```
+
+### 3. Merge with key bindings
+
+```js
+const keys = await ServiceMouse.getKeymap(0)
+const bindings = keys.filter((k) => k.type === 0x60 || k.type === 0x61)
+
+for (const key of bindings) {
+  const profile = bySlot.get(key.code1)
+  const play =
+    key.type === 0x61
+      ? { mode: 'times', times: key.code2 }
+      : { mode: 'loop', loop: key.code2 }
+  // key.index = physical button slot; profile.list = macro content; play = playback mode
+}
+```
+
+Playback mode lives only on the keymap; after changing `list`, write back with `setMacros`.
+
+---
+
 ## Write macros
 
 `ServiceMouse.setMacros(profiles)`

@@ -397,3 +397,24 @@ for (let i = 0; i < 8 && i < cellCount; i += 1) {
 }
 await ServiceKeyboard.setWelcomeMatrixColors(colors, { cellCount })
 ```
+
+---
+
+## 原始分包读写（高级）
+
+驱动 / 自定义点阵通道可直接走底层分包：
+
+| API | 说明 |
+|---|---|
+| `writeRawPayload(command, data)` | 按当前 `packetSize` 分包写入并 `stop` |
+| `readRawPayload(command, totalSize)` | 分包读取指定总字节数 |
+| `writeRawGifPayload(command, data, frameCount?)` | V4 GIF 缓冲写入（含擦除延时） |
+
+一般优先用 `setUserMatrixColors` / `setMatrixAnimation` / LCD API；仅在对接固件私有缓冲时使用上述方法。
+
+```js
+await ServiceKeyboard.writeRawPayload(0x40, bytes)
+const raw = await ServiceKeyboard.readRawPayload(0x3f, 512)
+await ServiceKeyboard.writeRawGifPayload(0x43, gifBytes, frameCount)
+```
+

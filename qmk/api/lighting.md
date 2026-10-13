@@ -70,7 +70,8 @@ await ServiceQmk.saveCustomMenu(3)
 
 ## 保存自定义通道
 
-`ServiceQmk.saveCustomMenu(channel)`
+`ServiceQmk.saveCustomMenu(channel)`  
+别名（对齐驱动）：`ServiceQmk.commitCustomMenu(channel)`
 
 VIA `0x09`。
 
@@ -83,6 +84,77 @@ VIA `0x09`。
 ### 返回值
 
 `Promise<void>`
+
+---
+
+## 解析 VIA menus 灯效列表
+
+`parseMenusToLightingEffects(menus, rule?)`  
+实例方法：`ServiceQmk.parseMenusToLightingEffects(menus, rule?)`  
+驱动风格别名：`ServiceQmk.PARSE_MENUS_TO_LIGHTING_EFFECTS(menus, rule?)`
+
+纯解析，不发 HID。从 VIA JSON `menus` 里找出 `label === 'Lighting'` 的菜单，按 contentId 前缀分组：
+
+| contentId 前缀 | 分组 key |
+|---|---|
+| `id_qmk_rgb_matrix_` | `backlight` |
+| `id_qmk_rgblight_` | `logo` |
+| `id_qmk_audio_` | `side` |
+| `id_qmk_Lattice_` | `lattice` |
+
+### 参数
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `menus` | `ViaMenu[]` | VIA 定义里的 `menus` |
+| `rule` | `LightingParseRule?` | 默认 `DEFAULT_LIGHTING_PARSE_RULE` |
+
+### 返回值
+
+`ParsedLightingResult`：`effects` / `maxBrightness` / `maxSpeed`
+
+### 使用示例
+
+```js
+import {
+  parseMenusToLightingEffects,
+  DEFAULT_LIGHTING_PARSE_RULE,
+} from '@rdmctmzt/sdk-qmk'
+
+const parsed = parseMenusToLightingEffects(viaDefinition.menus)
+// 或 ServiceQmk.PARSE_MENUS_TO_LIGHTING_EFFECTS(viaDefinition.menus)
+console.log(parsed.effects.backlight, parsed.maxBrightness.backlight)
+```
+
+相关：`parseLightingGroup`、`evaluateViaShowIf`（`showIf` 含 `!= N` 时按当前 effect 值判断控件可见）。
+
+---
+
+## 读取当前灯光状态
+
+`ServiceQmk.getLightingState(menus)`
+
+按 Lighting 菜单遍历 `range` / `dropdown` / `color`，对每项发 `CUSTOM_MENU_GET_VALUE`。  
+`color` 写入 `${contentId}_hue` / `${contentId}_sat`，并保留 `contentId = hue`。
+
+### 参数
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `menus` | `ViaMenu[]` | 同 VIA JSON `menus` |
+
+### 返回值
+
+`Promise<Record<string, number>>`
+
+### 使用示例
+
+```js
+const state = await ServiceQmk.getLightingState(viaDefinition.menus)
+const brightness = state['id_qmk_rgb_matrix_brightness']
+```
+
+独立函数：`readLightingStateFromMenus(menus, getCustomMenuValue)`。
 
 ---
 

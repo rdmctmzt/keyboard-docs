@@ -49,11 +49,21 @@ const ServiceMouse = new Mouse({
 
 ### 2. 授权并初始化
 
+方式 A — 弹窗：
+
 ```js
 const devices = await ServiceMouse.getDevices()
 const { id } = devices[0]
 await ServiceMouse.init(id)
 ```
+
+方式 B — 宿主已打开 `HIDDevice`：
+
+```js
+await ServiceMouse.initDevice(hostHidDevice)
+```
+
+详见 [其它 API](./api/misc)。
 
 ### 3. 先读信息区，再改配置
 
@@ -84,6 +94,7 @@ ServiceMouse.on('usbChange', (data) => {
 | 按键映射 | [按键映射](./api/keyRemapping) |
 | 宏 | [宏](./api/macro) |
 | 有线在线升级（与 1K 键盘同一套 IAP） | [在线升级](./api/upgrade) |
+| `init` / `initDevice` / `close` / 拔插 | [其它 API](./api/misc) |
 | 命令表 / 包格式 | [命令说明](./api/commands) |
 | 键值表 | [键值表](./keycodes) |
 | 参数类型 | [参数类型](./types) |

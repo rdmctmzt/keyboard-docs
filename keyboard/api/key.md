@@ -48,6 +48,81 @@ const keys = await ServiceKeyboard.getKeymap(0)
 
 ---
 
+## 读回后如何处理键值 {#process-after-read}
+
+`getKeymap` / `getDefaultKeymap` 已经返回 `KeyEntry[]`，不必再解包二进制。每个元素都是可用的三字节键值，按 `type` 分支处理。
+
+### 1. 先确认这是不是有效槽
+
+| 情况 | 判定 | 建议 |
+|---|---|---|
+| 空槽 / 未用 | `type === 0` 且 `code1 === 0` 且 `code2 === 0` | UI 可不展示，或标成「空」 |
+| 穿透键 | `type === 0x10`（或 `0`）且 `code1 === 0` 且 `code2 === 0x01` | 显示 `▽`，表示透到下层 |
+| 有效键 | 其它 | 按下面分支解析 |
+
+物理键只占一部分 `0–127` 槽。布局对应关系见 [如何得到正确的键位 index](#如何得到正确的键位-index)。
+
+### 2. 按 `type` 拆成业务数据
+
+| `type` | 可用数据怎么取 | 典型用途 |
+|---|---|---|
+| `0x10` / `0x12` | `code1` = 修饰键掩码；`code2` = 键盘 HID Usage | 普通键、快捷键。显示名查 [键值表](../keycodes) |
+| `0x20` | `code1` = 系统功能（如电源） | 系统键 |
+| `0x30` | `code1` = 多媒体 Usage | 音量、播放等 |
+| `0x40` | `code2` = 鼠标按键位（`1` 左 / `2` 右 / `4` 中 / `8` 后退 / `16` 前进） | 鼠标键 |
+| `0x50` | `code1` = 特殊功能号 | Fn、切层、灯效开关等 |
+| `0x60` | `code1` = 宏槽；`code2` = 循环类型 `0/1/3` | 宏绑定，内容在 `getMacros()` |
+| `0x61` | `code1` = 宏槽；`code2` = 播放次数 `2–255` | 指定次数的宏绑定 |
+
+```js
+function describeKey(key) {
+  const { type, code1, code2 } = key
+  if (type === 0 && code1 === 0 && code2 === 0) return { kind: 'empty' }
+  if ((type === 0x10 || type === 0) && code1 === 0 && code2 === 0x01) {
+    return { kind: 'transparent', label: '▽' }
+  }
+  if (type === 0x10 || type === 0x12) {
+    return { kind: 'keyboard', mods: code1, usage: code2 }
+  }
+  if (type === 0x40) {
+    return { kind: 'mouse', button: code2 }
+  }
+  if (type === 0x60) {
+    return { kind: 'macro', slot: code1, loop: code2 }
+  }
+  if (type === 0x61) {
+    return { kind: 'macro', slot: code1, times: code2 }
+  }
+  if (type === 0x50) {
+    return { kind: 'special', fn: code1 }
+  }
+  return { kind: 'other', type, code1, code2 }
+}
+
+const keys = await ServiceKeyboard.getKeymap(0)
+const uiKeys = keys.map((key) => ({
+  index: key.index,
+  layer: key.layer,
+  ...describeKey(key),
+}))
+```
+
+### 3. 宏键要和宏缓冲对上
+
+读到 `type === 0x60` / `0x61` 时：
+
+1. `code1` 就是宏槽号。
+2. 再用 `getMacros()` 取 `profiles.find(p => p.key === code1)`。
+3. 槽的动作在 `profile.list`；播放方式只看键上的 `code2`，不看 `profile.replayCnt`。
+
+完整动作解析见 [宏 · 读回后如何处理](./macro#process-after-read)。
+
+### 4. 改完再写回
+
+展示 / 编辑用的是上面拆出来的字段。写回设备时仍组装成 `{ type, code1, code2 }`，调用 `setKey`。不要把显示名、宏 `list` 写进键表。
+
+---
+
 ## 读取出厂键表
 
 `ServiceKeyboard.getDefaultKeymap(layer?)`

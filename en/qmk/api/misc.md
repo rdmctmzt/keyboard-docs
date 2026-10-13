@@ -182,3 +182,11 @@ None.
 ```js
 const ver = ServiceQmk.cachedProtocolVersion
 ```
+
+---
+
+## SDK API names (see Chinese docs for full detail)
+
+- `initDevice`
+- `getCurrentDevice`
+- `getNativeDevice`

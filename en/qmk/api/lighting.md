@@ -113,3 +113,14 @@ await ServiceQmk.setLightingValue(CustomChannel.RGB_MATRIX, 0, 200)
 // Color example
 await ServiceQmk.setLightingValue(CustomChannel.RGB_MATRIX, 3, 128, 255)
 ```
+
+---
+
+## SDK API names (see Chinese docs for full detail)
+
+- `commitCustomMenu`
+- `parseMenusToLightingEffects`
+- `PARSE_MENUS_TO_LIGHTING_EFFECTS`
+- `getLightingState`
+- `DEFAULT_LIGHTING_PARSE_RULE`
+- `readLightingStateFromMenus`

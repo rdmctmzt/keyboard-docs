@@ -7,8 +7,9 @@
     "dev": "vitepress dev",
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview",
-    "audit": "node scripts/audit-sdk-docs.mjs",
-    "selftest:qmk": "node scripts/selftest-qmk.mjs"
+    "selftest:qmk": "node scripts/selftest-qmk.mjs",
+    "selftest": "node scripts/selftest-sdk-docs.mjs",
+    "selftest:all": "node scripts/selftest-qmk.mjs && node scripts/selftest-sdk-docs.mjs"
   },
   "devDependencies": {
     "vitepress": "^1.6.3"

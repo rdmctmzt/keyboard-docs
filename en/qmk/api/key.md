@@ -95,6 +95,70 @@ const keyAt23 = layer0[2 * 15 + 3]
 
 ---
 
+## Process keycodes after read {#process-after-read}
+
+`getKey` / `getKeymap` / `readRawMatrix` return **16-bit QMK keycodes** (or keycode arrays), not vendor 3-byte key values.
+
+### 1. Array index
+
+```js
+const matrix = { rows: definition.matrix.rows, cols: definition.matrix.cols }
+const layer0 = await ServiceQmk.readRawMatrix(matrix, 0)
+
+// Row-major
+const index = row * matrix.cols + col
+const keycode = layer0[index]
+```
+
+Row and column come from VIA JSON `matrix` and `"row,col"` in `layouts.keymap`; see [VIA JSON](../via-json).
+
+### 2. Turn numbers into usable information
+
+| Keycode range / shape | Usage |
+|---|---|
+| `0x0000` | Empty `KC_NO` |
+| `0x0001` | Transparent `KC_TRNS` |
+| `0x0004`–basic keys | See [Keycode table](../keycodes), e.g. `0x0004` = `KC_A` |
+| `MACRO(n)` (VIA v12 ~ `0x7700+n`) | `n` is macro slot; content via `getMacros()` |
+| `CUSTOM(n)` / `QK_KB` | Display names from VIA JSON `customKeycodes` |
+| `LT` / `MO` / `MT` etc. | Split layer / mods per [Keycode table · advanced ranges](../keycodes) |
+
+```js
+function describeQmkKey(keycode, customKeycodes = []) {
+  if (keycode === 0x0000) return { kind: 'empty' }
+  if (keycode === 0x0001) return { kind: 'transparent', label: '▽' }
+
+  // VIA v12 MACRO(n)
+  if (keycode >= 0x7700 && keycode <= 0x777f) {
+    return { kind: 'macro', slot: keycode - 0x7700 }
+  }
+
+  // VIA v12 CUSTOM(n)
+  if (keycode >= 0x7e00 && keycode <= 0x7eff) {
+    const n = keycode - 0x7e00
+    const custom = customKeycodes[n]
+    return {
+      kind: 'custom',
+      slot: n,
+      name: custom?.name ?? `CUSTOM(${n})`,
+    }
+  }
+
+  return { kind: 'keycode', keycode }
+}
+
+const layer0 = await ServiceQmk.readRawMatrix(matrix, 0)
+const ui = layer0.map((keycode, index) => ({
+  row: Math.floor(index / matrix.cols),
+  col: index % matrix.cols,
+  ...describeQmkKey(keycode, definition.customKeycodes),
+}))
+```
+
+Macro slot parsing: [Macros · Process macros after read](./macro#process-after-read). Write back still uses `setKey` / `setKeymap` with 16-bit numbers.
+
+---
+
 ## Write multi-layer keymap
 
 `ServiceQmk.setKeymap(matrix, keymap)`
@@ -150,3 +214,10 @@ await ServiceQmk.clearAllKeymaps()
 `getKeymapBuffer(offset, size)` / `setKeymapBuffer(offset, data)`
 
 VIA `0x12` / `0x13`. Max **28** bytes per call. Prefer `getKeymap` / `setKeymap` in application code.
+
+---
+
+## SDK API names (see Chinese docs for full detail)
+
+- `readRawMatrix`
+- `writeRawMatrix`

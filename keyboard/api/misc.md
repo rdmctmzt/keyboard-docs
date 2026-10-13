@@ -49,7 +49,7 @@ const { id, vendorId, productId, productName } = devices[0]
 
 `ServiceKeyboard.init(id)`
 
-按 `id` 打开已授权设备，建立传输层并清空信息区 / 功能区缓存。
+按 `id` 打开已授权设备，内部调用 `initDevice`，建立传输层并清空信息区 / 功能区缓存。
 
 ### 参数
 
@@ -78,11 +78,35 @@ if (!success) {
 
 ---
 
+## 绑定已有 HIDDevice
+
+`ServiceKeyboard.initDevice(device)`
+
+驱动 / 宿主已打开物理口时使用（例如 WebHid 首页卡片）。同 VID/PID 多接口时，SDK 会优先选厂商口（`usagePage ≥ 0xFF00` 且有 IN+OUT）。
+
+### 参数
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `device` | `HIDDevice` | 已授权的原生 WebHID 设备 |
+
+### 返回值
+
+`Promise<{ success: boolean, device: HidDeviceInfo | null }>`
+
+### 使用示例
+
+```js
+await ServiceKeyboard.initDevice(hostHidDevice)
+```
+
+---
+
 ## 当前已连接设备
 
 `ServiceKeyboard.getCurrentDevice()`
 
-读取当前已 `init` 的设备信息。
+读取当前已 `init` / `initDevice` 的设备信息。
 
 ### 参数
 
@@ -98,6 +122,18 @@ if (!success) {
 const cur = ServiceKeyboard.getCurrentDevice()
 if (cur) console.log(cur.vendorId, cur.productId)
 ```
+
+---
+
+## 原生 HIDDevice
+
+`ServiceKeyboard.getNativeDevice()`
+
+返回底层 `HIDDevice`（未连接为 `null`），供驱动复用同一物理口。
+
+### 返回值
+
+`HIDDevice | null`
 
 ---
 
